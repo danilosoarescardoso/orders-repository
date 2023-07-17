@@ -1,0 +1,119 @@
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: orders-api
+spec:
+  type: asyncapi
+  owner: user:guest
+  lifecycle: experimental
+  definition: |
+    asyncapi: 2.4.0
+    info:
+      title: API Document for Confluent Cluster
+      version: 1.0.0
+    servers:
+      cluster:
+        url: https://pkc-6ojv2.us-west4.gcp.confluent.cloud:443
+        description: Confluent Kafka instance.
+        protocol: kafka
+        security:
+        - confluentBroker: []
+      schema-registry:
+        url: https://psrc-35wr2.us-central1.gcp.confluent.cloud
+        description: Confluent Kafka Schema Registry Server
+        protocol: kafka
+        security:
+        - confluentSchemaRegistry: []
+    channels:
+      orders:
+        subscribe:
+          operationId: OrdersSubscribe
+          bindings:
+            kafka:
+              bindingVersion: 0.3.0
+              groupId:
+                type: string
+              clientId:
+                type: string
+          message:
+            $ref: '#/components/messages/OrdersMessage'
+        bindings:
+          kafka:
+            x-partitions: 6
+            x-configs:
+              cleanup.policy: delete
+              compression.type: producer
+              delete.retention.ms: "86400000"
+              file.delete.delay.ms: "60000"
+              flush.messages: "9223372036854775807"
+              flush.ms: "9223372036854775807"
+              follower.replication.throttled.replicas: ""
+              index.interval.bytes: "4096"
+              leader.replication.throttled.replicas: ""
+              max.compaction.lag.ms: "9223372036854775807"
+              max.message.bytes: "2097164"
+              message.downconversion.enable: "true"
+              message.format.version: 3.0-IV1
+              message.timestamp.difference.max.ms: "9223372036854775807"
+              message.timestamp.type: CreateTime
+              min.cleanable.dirty.ratio: "0.5"
+              min.compaction.lag.ms: "0"
+              min.insync.replicas: "2"
+              preallocate: "false"
+              retention.bytes: "-1"
+              retention.ms: "604800000"
+              segment.bytes: "104857600"
+              segment.index.bytes: "10485760"
+              segment.jitter.ms: "0"
+              segment.ms: "604800000"
+              unclean.leader.election.enable: "false"
+        x-messageCompatibility: BACKWARD
+    components:
+      messages:
+        OrdersMessage:
+          schemaFormat: application/vnd.apache.avro;version=1.9.0
+          contentType: application/avro
+          payload:
+            connect.name: ksql.orders
+            fields:
+            - name: ordertime
+              type: long
+            - name: orderid
+              type: int
+            - name: itemid
+              type: string
+            - name: orderunits
+              type: double
+            - name: address
+              type:
+                connect.name: ksql.address
+                fields:
+                - name: city
+                  type: string
+                - name: state
+                  type: string
+                - name: zipcode
+                  type: long
+                name: address
+                type: record
+            name: orders
+            namespace: ksql
+            type: record
+          name: OrdersMessage
+          bindings:
+            kafka:
+              bindingVersion: 0.3.0
+              key:
+                type: string
+      securitySchemes:
+        confluentBroker:
+          type: userPassword
+          x-configs:
+            sasl.mechanisms: PLAIN
+            sasl.password: '{{CLUSTER_API_SECRET}}'
+            sasl.username: '{{CLUSTER_API_KEY}}'
+            security.protocol: sasl_ssl
+        confluentSchemaRegistry:
+          type: userPassword
+          x-configs:
+            basic.auth.user.info: '{{SCHEMA_REGISTRY_API_KEY}}:{{SCHEMA_REGISTRY_API_SECRET}}'
